@@ -1,0 +1,48 @@
+docker-master:
+  image: docker:dind
+  privileged: true
+  links:
+    - proxy-master:registry.local
+  command: "--insecure-registry registry.local"
+
+docker-remote:
+  image: docker:dind
+  privileged: true
+  volumes:
+    - ./certs:/etc/docker/certs.d/registry.local
+  links:
+    - proxy-remote:registry.local
+  command: "--insecure-registry registry.local"
+
+proxy-master:
+  image: nginx
+  volumes:
+    - ./certs:/certs:ro
+    - ./proxy/master:/etc/nginx/conf.d:ro
+  links:
+    - registry-master:registry
+
+proxy-remote:
+  image: nginx
+  volumes:
+    - ./certs:/certs:ro
+    - ./proxy/remote:/etc/nginx/conf.d/:ro
+  links:
+    - registry-remote:registry
+    - registry-master:registry-master
+
+registry-master:
+  image: registry:2.1
+  volumes:
+    - ./certs:/certs:ro
+    - ./data/master:/var/lib/registry
+  environment:
+    REGISTRY_HTTP_SECRET: super-secret-hash
+
+registry-remote:
+  image: registry:2.1
+  volumes:
+    - ./certs:/certs:ro
+    - ./data/remote:/var/lib/registry
+  environment:
+    REGISTRY_HTTP_SECRET: super-secret-hash
